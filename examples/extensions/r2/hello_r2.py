@@ -15,9 +15,13 @@ def func(ql: Qiling, *args, **kwargs):
     ql.os.stdout.write(b"=====hooked main=====!\n")
     return
 
+def cause_error(ql: Qiling, *args, **kwargs):
+    ql.os.emu_error()
+    return
+
 def my_sandbox(path, rootfs):
-    ql = Qiling(path, rootfs, verbose=QL_VERBOSE.DEBUG)
-    r2 = R2(ql)
+    ql = Qiling(path, rootfs, verbose=QL_VERBOSE.DEBUG, enable_r2=True)
+    r2 = ql.r2
 
     # search bytes sequence using ql.mem.search
     addrs = ql.mem.search(b'llo worl')  # return all matching results
@@ -34,6 +38,8 @@ def my_sandbox(path, rootfs):
     ql.hook_address(func, r2.functions['main'].offset)
     # enable trace powered by r2 symsmap
     r2.enable_trace()
+    # cause error intentionally to see r2-enhanced dissassembly
+    ql.hook_address(cause_error, r2.functions['main'] + 1)
     ql.run()
 
 if __name__ == "__main__":

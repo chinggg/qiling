@@ -53,6 +53,11 @@ class QlArchUtils:
 
         for insn in ql.arch.disassembler.disasm(data, address):
             offset = insn.address - ba
+            try:
+                # use r2 to get fine-grained name and offset
+                name, offset = ql.r2.resolve(insn.address)
+            except AttributeError:  # r2 is not enabled
+                pass
 
             ql.log.info(f'{insn.address:0{anibbles}x} [{name:20s} + {offset:#08x}]  {insn.bytes.hex(" "):20s} {insn.mnemonic:20s} {insn.op_str}')
 
