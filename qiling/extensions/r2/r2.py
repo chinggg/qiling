@@ -3,18 +3,19 @@
 # Cross Platform and Multi Architecture Advanced Binary Emulation Framework
 #
 
+from __future__ import annotations
 import bisect
 import ctypes
 import json
 import libr
 from dataclasses import dataclass, fields
-from enum import Enum
 from functools import cached_property, wraps
-from typing import Dict, List, Literal, Optional, Tuple, Union
-from qiling.core import Qiling
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 from qiling.extensions import trace
 from unicorn import UC_PROT_NONE, UC_PROT_READ, UC_PROT_WRITE, UC_PROT_EXEC, UC_PROT_ALL
 
+if TYPE_CHECKING:  # avoid circular import
+    from qiling import Qiling
 
 class R2Data:
     def __init__(self, **kwargs):
@@ -31,6 +32,9 @@ class Function(R2Data):
     size: int
     signature: str
 
+    # TODO: function as a sequence container of instructions
+    def __add__(self, other: int):
+        return self.offset + other
 
 @dataclass(unsafe_hash=True, init=False)
 class Section(R2Data):
@@ -111,17 +115,22 @@ class Xref(R2Data):
         return self.fromaddr < other.fromaddr
 
 class R2:
-    def __init__(self, ql: Qiling, baseaddr=(1 << 64) - 1, loadaddr=0):
+    def __init__(self, target: Union[Qiling, bytes, str], baseaddr=(1 << 64) - 1, loadaddr=0, **kwargs):
         super().__init__()
-        self.ql = ql
         self.baseaddr = baseaddr  # r2 -B [baddr]   set base address for PIE binaries
         self.loadaddr = loadaddr  # r2 -m [addr]    map file at given address
         self.analyzed = False
         self._r2c = libr.r_core.r_core_new()
-        if ql.code:
-            self._setup_code(ql.code)
+        if type(target).__name__ == 'Qiling':  # avoid circular import
+            self.ql = target
+            code, path = target.code, target.path
+            self._setup_code(code) if code else self._setup_file(path)
+        elif isinstance(target, bytes):
+            self._setup_code(target)
+        elif isinstance(target, str):
+            self._setup_file(target)
         else:
-            self._setup_file(ql.path)
+            raise ValueError(f"R2 only accept Qiling/str/bytes, not {type(target)}")
 
     def _setup_code(self, code: bytes):
         path = f'malloc://{len(code)}'.encode()
@@ -129,7 +138,10 @@ class R2:
         libr.r_core.r_core_bin_load(self._r2c, path, self.baseaddr)
         self._cmd(f'wx {code.hex()}')
         # set architecture and bits for r2 asm
-        self._cmd(f"e,asm.arch={self.ql.arch.type.name.lower().removesuffix('64')},asm.bits={self.ql.arch.bits}")
+        try:
+            self._cmd(f"e,asm.arch={self.ql.arch.type.name.lower().removesuffix('64')},asm.bits={self.ql.arch.bits}")
+        except AttributeError:  # no ql.arch
+            pass
 
     def _setup_file(self, path: str):
         path = path.encode()
@@ -196,6 +208,10 @@ class R2:
         # minus 1 to find the corresponding flag
         flag = self.flags[idx - 1]
         return flag, addr - flag.offset
+
+    def resolve(self, addr: int) -> Tuple[str, int]:
+        flag, offset = self.at(addr)
+        return flag.name, offset
 
     def refrom(self, addr: int) -> Optional[Xref]:
         return self.xrefs.get(addr)

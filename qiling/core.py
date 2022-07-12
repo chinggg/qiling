@@ -24,6 +24,7 @@ from .log import *
 from .utils import *
 from .core_struct import QlCoreStructs
 from .core_hooks import QlCoreHooks
+from .extensions.r2 import R2
 
 # Mixin Pattern
 class Qiling(QlCoreHooks, QlCoreStructs):
@@ -45,6 +46,7 @@ class Qiling(QlCoreHooks, QlCoreStructs):
             filter = None,
             stop: QL_STOP = QL_STOP.NONE,
             *,
+            enable_r2: bool = True,
             endian: Optional[QL_ENDIAN] = None,
             thumb: bool = False,
             libcache: bool = False
@@ -180,6 +182,10 @@ class Qiling(QlCoreHooks, QlCoreStructs):
 
         if self.baremetal:
             self._hw = select_component('hw', 'hw')(self)
+
+        # load r2 extension
+        if enable_r2:
+            self.r2 = R2(self)
 
         # Run the loader
         self.loader.run()

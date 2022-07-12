@@ -2,14 +2,16 @@
 
 # More info, please refer to https://github.com/qilingframework/qiling/pull/765
 
+from __future__ import annotations
 from collections import deque
-from typing import Deque, Iterable, Iterator, Mapping, Tuple
+from typing import TYPE_CHECKING, Deque, Iterable, Iterator, Mapping, Tuple
 
 from capstone import Cs, CsInsn, CS_ARCH_X86, CS_OP_IMM, CS_OP_MEM, CS_OP_REG
 from capstone.x86 import X86Op
 from capstone.x86_const import X86_INS_LEA, X86_REG_INVALID, X86_REG_RIP
 
-from qiling import Qiling
+if TYPE_CHECKING:
+    from qiling import Qiling
 
 TraceRecord = Tuple[CsInsn, Iterable[Tuple[int, int]]]
 
