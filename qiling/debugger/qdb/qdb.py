@@ -295,13 +295,13 @@ class QlQdb(cmd.Cmd, QlDebugger):
         self.bp_list.pop(bp.addr, None)
 
     @parse_int
-    def do_breakpoint(self, address: Optional[int] = None) -> None:
+    def do_breakpoint(self, address: Union[int, str] = None) -> None:
         """
         set breakpoint on specific address
         """
 
-        if address is None:
-            address = self.cur_addr
+        if isinstance(address, str):
+            address = self.ql.r2.where(address) or self.cur_addr
 
         self.set_breakpoint(address)
 

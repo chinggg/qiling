@@ -59,7 +59,7 @@ def parse_int(func: Callable) -> Callable:
         try:
             ret = read_int(s)
         except:
-            ret = None
+            ret = s
         return func(qdb, ret)
     return wrap
 
