@@ -4,6 +4,7 @@
 #
 
 import os, pickle
+from functools import cached_property
 from typing import TYPE_CHECKING, Any, AnyStr, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
 
 # See https://stackoverflow.com/questions/39740632/python-type-hinting-without-cyclic-imports
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
 
 from .const import QL_ARCH, QL_ENDIAN, QL_OS, QL_STOP, QL_VERBOSE, QL_ARCH_INTERPRETER, QL_OS_BAREMETAL
 from .exception import QlErrorFileNotFound, QlErrorArch, QlErrorOsType
+from .extensions.r2 import R2
 from .host import QlHost
 from .log import *
 from .utils import *
@@ -243,6 +245,14 @@ class Qiling(QlCoreHooks, QlCoreStructs):
         """
         return self._log_file_fd
 
+    @cached_property
+    def r2(self) -> "R2":
+        """ Qiling r2 extension.
+            
+            Also see qiling/extensions/r2/r2.py
+        """
+        return R2(self)
+        
     ##################
     # Qiling Options #
     ##################
