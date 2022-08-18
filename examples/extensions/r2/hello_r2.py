@@ -35,6 +35,7 @@ def my_sandbox(path, rootfs):
     # enable trace powered by r2 symsmap
     # r2.enable_trace()
     r2.enable_disasm()  # monky-patched disasm powered by r2
+    r2.bt(0x401906)
     ql.run()
 
 if __name__ == "__main__":

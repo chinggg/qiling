@@ -132,6 +132,18 @@ class Xref(R2Data):
         return self.fromaddr < other.fromaddr
 
 
+@dataclass(unsafe_hash=True)
+class Frame:
+    addr: int
+    size: int
+    sp: int
+    bp: int
+    name: str = None  # str of name + offset
+
+    def __str__(self):
+       return f'{self.addr:#x} {self.name}'
+
+
 class R2:
     def __init__(self, ql: "Qiling", baseaddr=(1 << 64) - 1, loadaddr=0):
         super().__init__()
@@ -267,6 +279,42 @@ class R2:
     def dis_nbytes(self, addr: int, size: int) -> List[Instruction]:
         insts = [Instruction(**dic) for dic in self._cmdj(f"pDj {size} @ {addr}")]
         return insts
+
+    def dis_ninsts(self, addr: int, n: int=1) -> List[Instruction]:
+        insts = [Instruction(**dic) for dic in self._cmdj(f"pdj {n} @ {addr}")]
+        return insts
+
+    def _backtrace_fuzzy(self, at: int = None, depth: int = 128) -> List[Frame]:
+        '''Fuzzy backtrace, see https://github.com/radareorg/radare2/blob/master/libr/debug/p/native/bt/fuzzy_all.c#L38
+        Args:
+            at: address to start walking stack, default to current SP
+            depth: limit of stack walking
+        Returns:
+            List of Frame
+        '''
+        sp = at or self.ql.arch.regs.arch_sp
+        wordsize = self.ql.arch.bits // 8
+        frames = []
+        cursp = oldsp = sp
+        for i in range(depth):
+            addr = self.ql.stack_read(i * wordsize)
+            inst = self.dis_ninsts(addr)[0]
+            if inst.type.lower() == 'call':
+                frame = Frame(addr=addr, size=cursp - oldsp, sp=cursp, bp=oldsp, name=self.at(addr))
+                frames.append(frame)
+                oldsp = cursp
+            cursp += wordsize
+        return frames
+
+    def bt(self, target: int | str):
+        '''Backtrace when reaching target'''
+        def bt_hook(ql: 'Qiling', addr: int, size: int, target):
+            if isinstance(target, str):
+                target = self.where(target)
+            if addr <= target and target <= addr + size:
+                for frame in self._backtrace_fuzzy():
+                    print(frame)
+        self.ql.hook_code(bt_hook, target)
 
     def disassembler(self, ql: 'Qiling', addr: int, size: int, filt: Pattern[str]=None) -> int:
         '''A human-friendly monkey patch of QlArchUtils.disassembler powered by r2, can be used for hook_code
