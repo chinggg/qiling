@@ -7,6 +7,7 @@ import io
 import os
 
 from enum import IntEnum
+import time
 from typing import Optional, Sequence, Mapping, Tuple
 
 from elftools.common.utils import preserve_stream_pos
@@ -66,7 +67,7 @@ class QlLoaderELF(QlLoader):
 
     def run(self):
         if self.ql.code:
-            self.ql.mem.map(self.ql.os.entry_point, self.ql.os.code_ram_size, info="[shellcode_stack]")
+            self.ql.mem.map(self.ql.os.entry_point, self.ql.os.code_ram_size, info="[shellcode_stack]", ptr=self.ql.code)
 
             shellcode_base = self.ql.os.entry_point + 0x200000 - 0x1000
             self.ql.mem.write(shellcode_base, self.ql.code)

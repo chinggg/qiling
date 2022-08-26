@@ -563,7 +563,7 @@ class QlMemoryManager:
         self.change_mapinfo(aligned_address, aligned_address + aligned_size, mem_p = perms)
 
 
-    def map(self, addr: int, size: int, perms: int = UC_PROT_ALL, info: Optional[str] = None):
+    def map(self, addr: int, size: int, perms: int = UC_PROT_ALL, info: Optional[str] = None, ptr: Optional[bytes] = None):
         """Map a new memory range.
 
         Args:
@@ -582,7 +582,13 @@ class QlMemoryManager:
         if not self.is_available(addr, size):
             raise QlMemoryMappedError('Requested memory is unavailable')
 
-        self.ql.uc.mem_map(addr, size, perms)
+        if ptr is not None:
+            # if (ptrlen := len(ptr)) < size:
+            #     ptr.ljust(size, b'\x00')
+            #     self.ql.log.debug(f'Pointer size {ptrlen} less than requested size {size}, padding with zeroes')
+            self.ql.uc.mem_map_ptr(addr, size, perms, ptr)
+        else:
+            self.ql.uc.mem_map(addr, size, perms)
         self.add_mapinfo(addr, addr + size, perms, info or '[mapped]', is_mmio=False)
 
     def map_mmio(self, addr: int, size: int, read_cb: Optional[MmioReadCallback], write_cb: Optional[MmioWriteCallback], info: str = '[mmio]'):

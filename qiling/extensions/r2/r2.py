@@ -5,11 +5,13 @@
 
 import ctypes
 import json
+from mmap import mmap
 import re
 import libr
 from dataclasses import dataclass, field, fields
 from functools import cached_property, wraps
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Pattern, Tuple, Union
+from libr.r_io import struct_r_io_t
 from qiling.const import QL_ARCH
 from qiling.extensions import trace
 from unicorn import UC_PROT_NONE, UC_PROT_READ, UC_PROT_WRITE, UC_PROT_EXEC, UC_PROT_ALL
@@ -163,10 +165,15 @@ class R2:
         }[archtype]
 
     def _setup_code(self, code: bytes):
-        path = f'malloc://{len(code)}'.encode()
-        fh = libr.r_core.r_core_file_open(self._r2c, path, UC_PROT_ALL, self.loadaddr)
-        libr.r_core.r_core_bin_load(self._r2c, path, self.baseaddr)
-        self._cmd(f'wx {code.hex()}')
+        mm = mmap(-1, len(code))
+        mm.write(code)
+        print(mm)
+        rio = ctypes.cast(self._r2c.contents.io, ctypes.POINTER(struct_r_io_t))
+        libr.r_io.r_io_map_add(rio, -1, UC_PROT_ALL, 0, self.loadaddr, len(code))
+        # path = f'malloc://{len(code)}'.encode()
+        # fh = libr.r_core.r_core_file_open(self._r2c, path, UC_PROT_ALL, self.loadaddr)
+        # libr.r_core.r_core_bin_load(self._r2c, path, self.baseaddr)
+        # self._cmd(f'wx {code.hex()}')
         # set architecture and bits for r2 asm
         arch = self._qlarch2r(self.ql.arch.type)
         self._cmd(f"e,asm.arch={arch},asm.bits={self.ql.arch.bits}")
