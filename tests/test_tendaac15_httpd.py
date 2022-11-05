@@ -80,7 +80,8 @@ class ELFTest(unittest.TestCase):
                         
             time.sleep(5)
 
-            conn = http.client.HTTPConnection('localhost', 8080, timeout=10)
+            # try to fail CI to see if it turns red
+            conn = http.client.HTTPConnection('localhost', 23333, timeout=10)
             headers = {'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded'}
             web_data = {'page': 'CCCCAAAA', 'entrys':'sync'}
             json_data = json.dumps(web_data)
